@@ -21,18 +21,32 @@
     }
     .grid2 { display:grid; grid-template-columns: 1fr 1fr; gap:12px; }
     .grid3 { display:grid; grid-template-columns: 1fr 1fr 1fr; gap:12px; }
+
+    /* Weekly grid */
     .row { display:grid; grid-template-columns: 120px repeat(7, 1fr); gap:8px; align-items:center; margin:8px 0; }
     .row > div:first-child { font-weight:600; }
-    .row.header { font-weight:600; color:#223; }
+    .row.header { font-weight:600; color:#223; margin-bottom:6px; }
     .row.header > div:first-child { visibility:hidden; }
-    .hint { color:var(--m); font-size:.9rem; }
+
+    /* Scroll container shows ~6 rows */
+    .scroll-wrap {
+      max-height: 300px;           /* ~6 rows visible */
+      overflow-y: auto;
+      padding-right: 6px;          /* avoid scrollbar overlay */
+      scroll-behavior: smooth;
+      border: 1px solid #eef0f3;
+      border-radius: 12px;
+      padding: 6px 8px;
+      background: #fff;
+    }
+
     .actions { display:flex; gap:10px; margin-top:16px; }
     button { padding:10px 14px; border-radius:10px; border:1px solid var(--p); background:var(--p); color:#fff; font-weight:600; cursor:pointer; }
     button.secondary { background:#fff; color:#1a73e8; }
     .hr { height:1px; background:#e5e7eb; margin:16px 0; }
+
     .oneoff-card { border:1px dashed #d1d5db; border-radius:10px; padding:12px; margin:10px 0; background:#fafbff; }
     .oneoff-head { display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; }
-    .ghost { opacity:.6 }
   </style>
 </head>
 <body>
@@ -61,54 +75,21 @@
 
         <fieldset aria-labelledby="weekly-legend">
           <legend id="weekly-legend">Recurring weekly rhythm</legend>
-          <p class="hint">Pick a status for any slots you’re commonly free. Leave blank if it doesn’t apply.</p>
+          <p class="muted">Scroll the grid to see all hours (10am–10pm). Leave blank if a slot doesn’t apply.</p>
 
-          <!-- NEW: weekday header row -->
+          <!-- Weekday header -->
           <div class="row header" aria-hidden="true">
             <div>—</div>
             <div>Mon</div><div>Tue</div><div>Wed</div><div>Thu</div><div>Fri</div><div>Sat</div><div>Sun</div>
           </div>
 
-          <!-- Rows: add/remove as needed -->
-          <div class="row">
-            <div>6–7 PM</div>
-            <select name="week[Mon_18]" aria-label="Mon 6–7 PM"><option value="">—</option><option>Preferred</option><option>Available</option><option>Unavailable</option></select>
-            <select name="week[Tue_18]" aria-label="Tue 6–7 PM"><option value="">—</option><option>Preferred</option><option>Available</option><option>Unavailable</option></select>
-            <select name="week[Wed_18]" aria-label="Wed 6–7 PM"><option value="">—</option><option>Preferred</option><option>Available</option><option>Unavailable</option></select>
-            <select name="week[Thu_18]" aria-label="Thu 6–7 PM"><option value="">—</option><option>Preferred</option><option>Available</option><option>Unavailable</option></select>
-            <select name="week[Fri_18]" aria-label="Fri 6–7 PM"><option value="">—</option><option>Preferred</option><option>Available</option><option>Unavailable</option></select>
-            <select name="week[Sat_18]" aria-label="Sat 6–7 PM"><option value="">—</option><option>Preferred</option><option>Available</option><option>Unavailable</option></select>
-            <select name="week[Sun_18]" aria-label="Sun 6–7 PM"><option value="">—</option><option>Preferred</option><option>Available</option><option>Unavailable</option></select>
-          </div>
-
-          <div class="row">
-            <div>7–8 PM</div>
-            <select name="week[Mon_19]" aria-label="Mon 7–8 PM"><option value="">—</option><option>Preferred</option><option>Available</option><option>Unavailable</option></select>
-            <select name="week[Tue_19]" aria-label="Tue 7–8 PM"><option value="">—</option><option>Preferred</option><option>Available</option><option>Unavailable</option></select>
-            <select name="week[Wed_19]" aria-label="Wed 7–8 PM"><option value="">—</option><option>Preferred</option><option>Available</option><option>Unavailable</option></select>
-            <select name="week[Thu_19]" aria-label="Thu 7–8 PM"><option value="">—</option><option>Preferred</option><option>Available</option><option>Unavailable</option></select>
-            <select name="week[Fri_19]" aria-label="Fri 7–8 PM"><option value="">—</option><option>Preferred</option><option>Available</option><option>Unavailable</option></select>
-            <select name="week[Sat_19]" aria-label="Sat 7–8 PM"><option value="">—</option><option>Preferred</option><option>Available</option><option>Unavailable</option></select>
-            <select name="week[Sun_19]" aria-label="Sun 7–8 PM"><option value="">—</option><option>Preferred</option><option>Available</option><option>Unavailable</option></select>
-          </div>
-
-          <div class="row">
-            <div>8–9 PM</div>
-            <select name="week[Mon_20]" aria-label="Mon 8–9 PM"><option value="">—</option><option>Preferred</option><option>Available</option><option>Unavailable</option></select>
-            <select name="week[Tue_20]" aria-label="Tue 8–9 PM"><option value="">—</option><option>Preferred</option><option>Available</option><option>Unavailable</option></select>
-            <select name="week[Wed_20]" aria-label="Wed 8–9 PM"><option value="">—</option><option>Preferred</option><option>Available</option><option>Unavailable</option></select>
-            <select name="week[Thu_20]" aria-label="Thu 8–9 PM"><option value="">—</option><option>Preferred</option><option>Available</option><option>Unavailable</option></select>
-            <select name="week[Fri_20]" aria-label="Fri 8–9 PM"><option value="">—</option><option>Preferred</option><option>Available</option><option>Unavailable</option></select>
-            <select name="week[Sat_20]" aria-label="Sat 8–9 PM"><option value="">—</option><option>Preferred</option><option>Available</option><option>Unavailable</option></select>
-            <select name="week[Sun_20]" aria-label="Sun 8–9 PM"><option value="">—</option><option>Preferred</option><option>Available</option><option>Unavailable</option></select>
-          </div>
-
-          <p class="hint">Need more rows? Duplicate one of the rows above in the HTML (or ping me and I’ll add a row adder).</p>
+          <!-- Scrollable weekly grid -->
+          <div id="weekly-grid" class="scroll-wrap" aria-label="Weekly availability grid (scrollable)"></div>
         </fieldset>
 
         <fieldset aria-labelledby="oneoff-legend">
           <legend id="oneoff-legend">Specific dates (one-offs)</legend>
-          <p class="hint">Use this for travel or unique openings. Add as many as you like.</p>
+          <p class="muted">Use this for travel or unique openings. Add as many as you like.</p>
 
           <!-- Dynamic list target -->
           <div id="oneoff-list"></div>
@@ -124,7 +105,7 @@
         </div>
       </form>
 
-      <!-- Hidden template for one-off blocks -->
+      <!-- Template for one-off cards -->
       <template id="oneoff-template">
         <div class="oneoff-card" data-oneoff>
           <div class="oneoff-head">
@@ -138,7 +119,10 @@
           </div>
           <label>Status
             <select name="oneoff[__i__][status]">
-              <option value="">—</option><option>Preferred</option><option>Available</option><option>Unavailable</option>
+              <option value="">—</option>
+              <option>Preferred</option>
+              <option>Available</option>
+              <option>Unavailable</option>
             </select>
           </label>
           <label>Notes
@@ -151,12 +135,62 @@
   </div>
 
   <script>
-    // Dynamic one-off rows for Formspree
-    (function () {
+    // ----- Weekly grid (10:00–22:00, scrollable, starts centered on 12–6pm) -----
+    (function buildWeeklyGrid() {
+      const grid = document.getElementById('weekly-grid');
+      const days = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+
+      // hours 10..21 (10–11, 11–12, ... 21–22) — 12 rows total
+      const startHours = Array.from({length: 12}, (_, i) => 10 + i); // 10..21
+
+      const fmt = (h) => {
+        const start = new Date(2000,0,1,h,0);
+        const end = new Date(2000,0,1,h+1,0);
+        const toLabel = d => d.toLocaleTimeString([], {hour:'numeric'});
+        return `${toLabel(start)}–${toLabel(end)}`;
+      };
+
+      const makeSelect = (day, h) => {
+        const sel = document.createElement('select');
+        sel.name = `week[${day}_${String(h).padStart(2,'0')}]`; // e.g., week[Mon_18]
+        sel.innerHTML = `<option value="">—</option>
+                         <option>Preferred</option>
+                         <option>Available</option>
+                         <option>Unavailable</option>`;
+        sel.setAttribute('aria-label', `${day} ${fmt(h)}`);
+        return sel;
+      };
+
+      // Build rows
+      startHours.forEach((h) => {
+        const row = document.createElement('div');
+        row.className = 'row';
+        const label = document.createElement('div');
+        label.textContent = fmt(h);
+        row.appendChild(label);
+
+        days.forEach((d) => row.appendChild(makeSelect(d, h)));
+
+        grid.appendChild(row);
+      });
+
+      // Scroll to put noon-ish rows in view (12–6pm)
+      // Find the row for 12:00
+      const noonIndex = startHours.indexOf(12);
+      const rowEls = grid.querySelectorAll('.row');
+      if (noonIndex >= 0 && rowEls[noonIndex]) {
+        // Try centering noon row
+        const target = rowEls[noonIndex];
+        const offset = target.offsetTop - grid.clientHeight / 2 + target.clientHeight / 2;
+        grid.scrollTop = Math.max(0, offset);
+      }
+    })();
+
+    // ----- Dynamic one-off rows -----
+    (function oneOffs() {
       const list = document.getElementById('oneoff-list');
       const tpl  = document.getElementById('oneoff-template').innerHTML;
       const addBtn = document.getElementById('add-oneoff');
-
       let idx = 0;
 
       function addOneOff(prefill = {}) {
@@ -165,22 +199,19 @@
         wrap.innerHTML = html;
         const card = wrap.firstElementChild;
 
-        // optional prefill support
-        if (prefill.date) card.querySelector(`[name="oneoff[${idx}][date]"]`).value = prefill.date;
-        if (prefill.start) card.querySelector(`[name="oneoff[${idx}][start]"]`).value = prefill.start;
-        if (prefill.end) card.querySelector(`[name="oneoff[${idx}][end]"]`).value = prefill.end;
+        // optional prefill
+        if (prefill.date)   card.querySelector(`[name="oneoff[${idx}][date]"]`).value   = prefill.date;
+        if (prefill.start)  card.querySelector(`[name="oneoff[${idx}][start]"]`).value  = prefill.start;
+        if (prefill.end)    card.querySelector(`[name="oneoff[${idx}][end]"]`).value    = prefill.end;
         if (prefill.status) card.querySelector(`[name="oneoff[${idx}][status]"]`).value = prefill.status;
-        if (prefill.notes) card.querySelector(`[name="oneoff[${idx}][notes]"]`).value = prefill.notes;
+        if (prefill.notes)  card.querySelector(`[name="oneoff[${idx}][notes]"]`).value  = prefill.notes;
 
-        card.querySelector('[data-remove]').addEventListener('click', () => {
-          card.remove();
-        });
-
+        card.querySelector('[data-remove]').addEventListener('click', () => card.remove());
         list.appendChild(card);
         idx += 1;
       }
 
-      // Start with two rows so it matches your previous version
+      // Start with two blocks to match your previous layout
       addOneOff();
       addOneOff();
 
