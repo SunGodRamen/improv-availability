@@ -3,111 +3,17 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Temp Improv — Practice Availability</title>
-  <meta name="description" content="Tell us the times you can practice this month." />
-
-  <link rel="stylesheet" href="css/app.css" />
-
-  <script src="js/config.js"></script>
-  <script src="js/app.js" defer></script>
+  <title>Thanks!</title>
+  <style>
+    body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; margin: 24px; }
+    .wrap { max-width: 720px; margin: 0 auto; }
+  </style>
 </head>
 <body>
   <div class="wrap">
-    <div class="card">
-      <h1>Yes, End! Team B — Practice Availability</h1>
-      <p class="muted">Mark your recurring weekly times and any one-off exceptions. “Preferred” beats “Unavailable”. Leave blanks if you don’t care.</p>
-
-      <form id="availability-form" action="https://formspree.io/f/xwpwgbng" method="POST">
-        <input type="text" name="_gotcha" style="display:none" tabindex="-1" autocomplete="off" />
-        <input type="hidden" name="_redirect" value="https://sungodramen.github.io/improv-availability/thanks.html" />
-
-        <div id="sr-status" aria-live="polite" class="visually-hidden"></div>
-        <fieldset>
-          <legend>Your info</legend>
-          <div class="grid2">
-            <label>Full name
-              <input required type="text" name="name" placeholder="e.g., Joe Shmoe" />
-            </label>
-            <label>Contact (optional)
-              <input type="email" name="email" placeholder="you@example.com" />
-            </label>
-          </div>
-        </fieldset>
-
-        <fieldset aria-labelledby="weekly-legend">
-          <legend id="weekly-legend">Recurring weekly rhythm</legend>
-          <p class="muted">Scroll the grid to see all hours (10am–10pm). Use the paint tools to drag (desktop) or tap a start and end (mobile).</p>
-
-          <div class="toolbar" aria-label="Paint options">
-            <label class="tool">
-              <input type="radio" name="paint" value="preferred" checked />
-              Preferred <span class="kbd">P</span>
-            </label>
-            <label class="tool">
-              <input type="radio" name="paint" value="unavailable" />
-              Unavailable <span class="kbd">U</span>
-            </label>
-            <label class="toggle" title="On touch screens, tap start & end cells to fill a vertical range.">
-              <input type="checkbox" id="mobile-drag-toggle" />
-              Enable drag on mobile
-            </label>
-          </div>
-
-          <div class="row header" aria-hidden="true">
-            <div>—</div>
-            <div>Mon</div><div>Tue</div><div>Wed</div><div>Thu</div><div>Fri</div><div>Sat</div><div>Sun</div>
-          </div>
-
-          <div id="weekly-grid" class="scroll-wrap" aria-label="Weekly availability grid (scrollable)"></div>
-        </fieldset>
-
-        <fieldset aria-labelledby="oneoff-legend">
-          <legend id="oneoff-legend">Specific dates (one-offs)</legend>
-          <p class="muted">Use this for travel or unique openings. Add as many as you like.</p>
-
-          <div id="oneoff-list"></div>
-
-          <div class="actions">
-            <button type="button" id="add-oneoff" class="secondary">+ Add another date</button>
-          </div>
-        </fieldset>
-
-        <div class="actions">
-          <button type="submit">Submit</button>
-          <button class="secondary" type="reset">Clear</button>
-        </div>
-      </form>
-
-      <template id="oneoff-template">
-        <div class="oneoff-card" data-oneoff>
-          <div class="oneoff-head">
-            <strong>One-off</strong>
-            <button type="button" class="secondary" data-remove>&times; Remove</button>
-          </div>
-
-          <div class="grid3">
-            <label>Date <input type="date" name="oneoff[__i__][date]" /></label>
-            <label>Start <input type="time" name="oneoff[__i__][start]" /></label>
-            <label>End   <input type="time" name="oneoff[__i__][end]" /></label>
-          </div>
-
-          <label>Status
-            <select name="oneoff[__i__][status]">
-              <option value="">—</option>
-              <option>Preferred</option>
-              <option>Unavailable</option>
-            </select>
-          </label>
-
-          <label>Notes
-            <input type="text" name="oneoff[__i__][notes]" placeholder="Optional context" />
-          </label>
-
-          <p class="oneoff-warn" data-warn style="display:none;">Heads up: this date is outside the current availability window.</p>
-        </div>
-      </template>
-
-    </div>
+    <h1>Thanks — availability received.</h1>
+    <p>Feel free to re-submit if anything changes; I’ll merge updates.</p>
+    <p><a href="./">Back to the form</a></p>
   </div>
 </body>
 </html>
