@@ -6,7 +6,7 @@
   <title>Temp Improv — Practice Availability</title>
   <meta name="description" content="Tell us the times you can practice this month." />
   <style>
-    :root { --b:#111; --m:#555; --g:#e9eef5; --card:#fff; --p:#1a73e8; --ok:#198754; --no:#c0392b; }
+    :root { --b:#111; --m:#555; --g:#e9eef5; --card:#fff; --p:#1a73e8; --ok:#198754; --no:#c0392b; --pending:#fff4cc; --pending-border:#f2d680; }
     * { box-sizing: border-box; }
     body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; background:#f6f7fb; margin:0; padding:24px; color:var(--b); }
     .wrap { max-width: 960px; margin: 0 auto; }
@@ -25,12 +25,11 @@
     /* Weekly grid */
     .row { display:grid; grid-template-columns: 120px repeat(7, 1fr); gap:8px; align-items:center; margin:8px 0; }
     .row > div:first-child { font-weight:600; }
-    .row.header { font-weight:600; color:#223; margin-bottom:6px; }
-    .row.header > div:first-child { visibility:hidden; }
+    .row.header { font-weight:600; color:#223; margin-bottom:6px; position:sticky; top:0; background:#fff; z-index:1; padding-top:2px; }
 
     /* Scroll container shows ~6 rows */
     .scroll-wrap {
-      max-height: 300px;           /* ~6 rows visible */
+      max-height: 320px;
       overflow-y: auto;
       padding-right: 6px;
       scroll-behavior: smooth;
@@ -38,20 +37,26 @@
       border-radius: 12px;
       padding: 6px 8px;
       background: #fff;
+      -webkit-overflow-scrolling: touch;
     }
 
     /* Paintable cell */
     .cell {
       display:flex; align-items:center; justify-content:center;
-      border:1px solid #e5e7eb; border-radius:10px; min-height:36px;
+      border:1px solid #e5e7eb; border-radius:10px; min-height:40px;
       background:#fff; cursor:pointer; user-select:none;
       outline: none;
+      touch-action: manipulation;
+      transition: background-color .12s ease, border-color .12s ease, color .12s ease;
+      text-align:center; line-height:1.1;
+      padding:4px 6px;
     }
     .cell:focus { box-shadow:0 0 0 2px #cde1ff; }
     .cell.preferred { background:#e8f6ee; border-color:#cfe9da; color:#0f5132; }
     .cell.unavailable { background:#fdecea; border-color:#f5c2c0; color:#842029; }
+    .cell.pending { background:var(--pending); border-color:var(--pending-border); color:#6a5a00; }
 
-    .actions { display:flex; gap:10px; margin-top:16px; }
+    .actions { display:flex; gap:10px; margin-top:16px; flex-wrap:wrap; }
     button { padding:10px 14px; border-radius:10px; border:1px solid var(--p); background:var(--p); color:#fff; font-weight:600; cursor:pointer; }
     button.secondary { background:#fff; color:#1a73e8; }
     .hr { height:1px; background:#e5e7eb; margin:16px 0; }
@@ -59,11 +64,12 @@
     .oneoff-card { border:1px dashed #d1d5db; border-radius:10px; padding:12px; margin:10px 0; background:#fafbff; }
     .oneoff-head { display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; }
 
-    /* Paint toolbar */
-    .toolbar { display:flex; gap:10px; align-items:center; margin:8px 0 4px; }
-    .tool { display:inline-flex; align-items:center; gap:8px; padding:8px 10px; border:1px solid #d0d7de; border-radius:10px; background:#fff; cursor:pointer; }
+    /* Toolbar */
+    .toolbar { display:flex; gap:10px; align-items:center; margin:8px 0 8px; flex-wrap:wrap; }
+    .tool, .toggle { display:inline-flex; align-items:center; gap:8px; padding:8px 10px; border:1px solid #d0d7de; border-radius:10px; background:#fff; }
     .tool input { accent-color:#1a73e8; }
     .kbd { font-family: ui-monospace, Menlo, Consolas, monospace; background:#eef1f6; border:1px solid #d8dee9; padding:0 6px; border-radius:6px; font-size:.85rem; }
+    @media (max-width: 640px) { .cell { min-height:48px; } }
   </style>
 </head>
 <body>
@@ -77,6 +83,10 @@
       <form id="availability-form" action="https://formspree.io/f/xwpwgbng" method="POST">
         <input type="text" name="_gotcha" style="display:none" tabindex="-1" autocomplete="off" />
         <input type="hidden" name="_redirect" value="https://sungodramen.github.io/improv-availability/thanks.html" />
+        <!-- Version stamp for parsers -->
+        <input type="hidden" name="_spec_version" value="v1.2" />
+        <!-- Live region for screen-reader hints -->
+        <div id="sr-status" aria-live="polite" class="visually-hidden"></div>
 
         <fieldset>
           <legend>Your info</legend>
@@ -92,12 +102,15 @@
 
         <fieldset aria-labelledby="weekly-legend">
           <legend id="weekly-legend">Recurring weekly rhythm</legend>
-          <p class="muted">Scroll the grid to see all hours (10am–10pm). Use the paint tools to drag across cells.</p>
+          <p class="muted">Scroll the grid to see all hours (10am–10pm). Use the paint tools to drag (desktop) or tap a start and end (mobile).</p>
 
-          <!-- Paint toolbar (only two modes now) -->
-          <div class="toolbar" role="radiogroup" aria-label="Paint mode">
+          <div class="toolbar" aria-label="Paint options">
             <label class="tool"><input type="radio" name="paint" value="preferred" checked /> Preferred <span class="kbd">P</span></label>
             <label class="tool"><input type="radio" name="paint" value="unavailable" /> Unavailable <span class="kbd">U</span></label>
+            <label class="toggle" title="On touch screens, tap start & end cells to fill a vertical range.">
+              <input type="checkbox" id="mobile-drag-toggle" />
+              Enable drag on mobile
+            </label>
           </div>
 
           <!-- Weekday header -->
@@ -114,7 +127,6 @@
           <legend id="oneoff-legend">Specific dates (one-offs)</legend>
           <p class="muted">Use this for travel or unique openings. Add as many as you like.</p>
 
-          <!-- Dynamic list target -->
           <div id="oneoff-list"></div>
 
           <div class="actions">
@@ -128,7 +140,6 @@
         </div>
       </form>
 
-      <!-- Template for one-off cards -->
       <template id="oneoff-template">
         <div class="oneoff-card" data-oneoff>
           <div class="oneoff-head">
@@ -157,12 +168,23 @@
   </div>
 
   <script>
-    // ---------- Weekly grid (10:00–22:00, scrollable, two-mode toggle/drag) ----------
+    // Utility: screen-reader status helper
+    function srSay(msg){
+      const n = document.getElementById('sr-status');
+      if (!n) return;
+      n.textContent = '';
+      // brief delay ensures change is announced
+      setTimeout(()=>{ n.textContent = msg; }, 10);
+    }
+
+    // ---------- Weekly grid (10:00–22:00), desktop drag + mobile tap-range ----------
     (function buildWeeklyGrid() {
       const grid = document.getElementById('weekly-grid');
       const form = document.getElementById('availability-form');
+      const mobileDragToggle = document.getElementById('mobile-drag-toggle');
       const days = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
       const startHours = Array.from({length: 12}, (_, i) => 10 + i); // 10..21
+      const isTouch = matchMedia('(pointer: coarse)').matches;
 
       const fmt = (h) => {
         const start = new Date(2000,0,1,h,0);
@@ -175,7 +197,6 @@
         return document.querySelector('input[name="paint"]:checked')?.value || 'preferred';
       }
 
-      // Hidden input helper (ensures deterministic payload)
       function ensureHidden(name) {
         let input = form.querySelector(`input[type="hidden"][name="${name}"]`);
         if (!input) {
@@ -189,18 +210,18 @@
 
       function applyState(cell, state) {
         cell.classList.remove('preferred','unavailable');
+        if (cell.classList.contains('pending')) {
+          // restore label when clearing pending
+          cell.classList.remove('pending');
+        }
         cell.textContent = '—';
         const hidden = ensureHidden(cell.dataset.name);
         if (state === 'preferred') {
-          cell.classList.add('preferred');
-          cell.textContent = 'Preferred';
-          hidden.value = 'Preferred';
+          cell.classList.add('preferred'); cell.textContent = 'Preferred'; hidden.value = 'Preferred';
         } else if (state === 'unavailable') {
-          cell.classList.add('unavailable');
-          cell.textContent = 'Unavailable';
-          hidden.value = 'Unavailable';
+          cell.classList.add('unavailable'); cell.textContent = 'Unavailable'; hidden.value = 'Unavailable';
         } else {
-          hidden.value = ''; // unset
+          hidden.value = '';
         }
       }
 
@@ -210,11 +231,10 @@
         return 'unset';
       }
 
-      // Build grid
+      // Build the grid
       startHours.forEach((h) => {
         const row = document.createElement('div');
         row.className = 'row';
-
         const label = document.createElement('div');
         label.textContent = fmt(h);
         row.appendChild(label);
@@ -225,6 +245,8 @@
           cell.type = 'button';
           cell.className = 'cell';
           cell.dataset.name = name;
+          cell.dataset.day = d;
+          cell.dataset.hour = String(h);
           cell.setAttribute('aria-label', `${d} ${fmt(h)}`);
           cell.textContent = '—';
           row.appendChild(cell);
@@ -234,13 +256,10 @@
         grid.appendChild(row);
       });
 
-      // Determine drag operation per your rule:
-      // start on BLANK  -> op = setTo(currentMode)
-      // start on SAME   -> op = unset
-      // start on OPPOSITE -> op = setTo(currentMode)
+      // ---------- Desktop drag mode ----------
       let dragging = false;
       let operation = 'set'; // 'set' or 'unset'
-      let opMode = 'preferred'; // which mode to set when operation==='set'
+      let opMode = 'preferred';
 
       function decideOperation(startCell) {
         const mode = currentMode();
@@ -248,7 +267,7 @@
         opMode = mode;
         if (state === 'unset') operation = 'set';
         else if (state === mode) operation = 'unset';
-        else operation = 'set'; // opposite -> set to current
+        else operation = 'set';
       }
 
       function paintCell(cell) {
@@ -257,47 +276,161 @@
         else applyState(cell, 'unset');
       }
 
-      // Click follows same rule as drag start on single cell
-      grid.addEventListener('click', (e) => {
+      function onClick(e){
         const t = e.target;
         if (!t.classList.contains('cell')) return;
         decideOperation(t);
         paintCell(t);
-      });
-
-      // Pointer drag (mouse/touch/pen)
-      grid.addEventListener('pointerdown', (e) => {
+      }
+      function onDown(e){
         const t = e.target;
         if (!t.classList.contains('cell')) return;
         decideOperation(t);
         dragging = true;
         grid.setPointerCapture(e.pointerId);
         paintCell(t);
-      });
-      grid.addEventListener('pointermove', (e) => {
+      }
+      function onMove(e){
         if (!dragging) return;
         const el = document.elementFromPoint(e.clientX, e.clientY);
         if (el && el.classList && el.classList.contains('cell')) paintCell(el);
-      });
-      function stopDrag(){ dragging = false; }
-      grid.addEventListener('pointerup', stopDrag);
-      grid.addEventListener('pointercancel', stopDrag);
-      grid.addEventListener('pointerleave', stopDrag);
+      }
+      function onUp(){ dragging = false; }
 
-      // Keyboard shortcuts on focused cell:
-      // P: toggle Preferred (blank/opposite -> Preferred; Preferred -> unset)
-      // U: toggle Unavailable (blank/opposite -> Unavailable; Unavailable -> unset)
+      function enableDesktopDrag() {
+        grid.addEventListener('pointerdown', onDown);
+        grid.addEventListener('pointermove', onMove);
+        grid.addEventListener('pointerup', onUp);
+        grid.addEventListener('pointercancel', onUp);
+        grid.addEventListener('click', onClick);
+      }
+      function disableDesktopDrag() {
+        grid.removeEventListener('pointerdown', onDown);
+        grid.removeEventListener('pointermove', onMove);
+        grid.removeEventListener('pointerup', onUp);
+        grid.removeEventListener('pointercancel', onUp);
+        grid.removeEventListener('click', onClick);
+      }
+
+      // ---------- Mobile tap-range mode (with visible "start" highlight) ----------
+      let rangeStart = null; // cell element
+
+      function sameColumn(a, b){ return a && b && a.dataset.day === b.dataset.day; }
+
+      function setPending(cell) {
+        clearPending(); // only one pending at a time
+        cell.classList.add('pending');
+        cell.dataset._originalLabel = cell.textContent;
+        cell.textContent = 'Select end';
+        cell.setAttribute('aria-label', (cell.getAttribute('aria-label') || '') + ' — start selected, choose end');
+        srSay('Start selected. Choose end in the same day.');
+      }
+
+      function clearPending() {
+        if (!rangeStart) return;
+        const c = rangeStart;
+        c.classList.remove('pending');
+        if (c.dataset._originalLabel != null) {
+          c.textContent = c.dataset._originalLabel;
+          delete c.dataset._originalLabel;
+        } else {
+          // fallback to match current state
+          const st = getState(c);
+          if (st === 'preferred') c.textContent = 'Preferred';
+          else if (st === 'unavailable') c.textContent = 'Unavailable';
+          else c.textContent = '—';
+        }
+        c.setAttribute('aria-label', (c.getAttribute('aria-label') || '').replace(/ — start selected.*$/,''));
+        rangeStart = null;
+      }
+
+      function applyRange(a, b) {
+        if (!a || !b) return;
+        if (!sameColumn(a,b)) {
+          // different day → treat as single tap on a
+          decideOperation(a);
+          paintCell(a);
+          return;
+        }
+        const day = a.dataset.day;
+        const h1 = parseInt(a.dataset.hour,10);
+        const h2 = parseInt(b.dataset.hour,10);
+        const [lo, hi] = h1 <= h2 ? [h1,h2] : [h2,h1];
+
+        decideOperation(a);
+        for (let h = lo; h <= hi; h++) {
+          const cell = grid.querySelector(`.cell[data-day="${day}"][data-hour="${h}"]`);
+          if (cell) paintCell(cell);
+        }
+      }
+
+      function onTap(e) {
+        const t = e.target;
+        if (!t.classList.contains('cell')) return;
+        // If tapping the same pending cell, cancel selection
+        if (rangeStart === t) {
+          clearPending();
+          srSay('Selection canceled.');
+          return;
+        }
+        if (!rangeStart) {
+          // begin range, show visual cue
+          rangeStart = t;
+          setPending(t);
+          t.focus();
+        } else {
+          // complete range
+          applyRange(rangeStart, t);
+          clearPending();
+        }
+      }
+
+      function enableMobileTapRange() {
+        grid.addEventListener('click', onTap);
+        // disable pointer drag to avoid scroll conflicts
+        disableDesktopDrag();
+        // cancel pending when tapping outside the grid
+        document.addEventListener('click', cancelIfOutside, { capture:true });
+      }
+      function disableMobileTapRange() {
+        grid.removeEventListener('click', onTap);
+        document.removeEventListener('click', cancelIfOutside, { capture:true });
+        clearPending();
+        enableDesktopDrag();
+      }
+      function cancelIfOutside(e){
+        if (!grid.contains(e.target) && rangeStart) clearPending();
+      }
+
+      // Keyboard shortcuts (both modes)
       grid.addEventListener('keydown', (e) => {
         const t = e.target;
         if (!t.classList || !t.classList.contains('cell')) return;
         if (e.key === 'p' || e.key === 'P') {
-          const state = getState(t);
-          applyState(t, state === 'preferred' ? 'unset' : 'preferred');
+          const st = getState(t);
+          applyState(t, st === 'preferred' ? 'unset' : 'preferred');
           e.preventDefault();
         } else if (e.key === 'u' || e.key === 'U') {
-          const state = getState(t);
-          applyState(t, state === 'unavailable' ? 'unset' : 'unavailable');
+          const st = getState(t);
+          applyState(t, st === 'unavailable' ? 'unset' : 'unavailable');
           e.preventDefault();
+        } else if (e.key === 'Escape') {
+          clearPending();
+        }
+      });
+
+      // Initial mode: desktop on non-touch; tap-range on touch unless user opts into drag
+      if (isTouch) {
+        enableMobileTapRange();
+      } else {
+        enableDesktopDrag();
+      }
+      mobileDragToggle.addEventListener('change', () => {
+        if (mobileDragToggle.checked) {
+          disableMobileTapRange();  // force drag on mobile
+          srSay('Drag mode enabled.');
+        } else {
+          if (isTouch) { enableMobileTapRange(); srSay('Tap range mode enabled.'); }
         }
       });
 
@@ -342,5 +475,14 @@
       addBtn.addEventListener('click', () => addOneOff());
     })();
   </script>
+
+  <style>
+    /* visually-hidden utility for aria-live */
+    .visually-hidden {
+      position:absolute!important;
+      width:1px;height:1px;
+      padding:0;margin:0;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0;
+    }
+  </style>
 </body>
 </html>
