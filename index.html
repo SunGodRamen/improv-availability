@@ -6,7 +6,7 @@
   <title>Temp Improv — Practice Availability</title>
   <meta name="description" content="Tell us the times you can practice this month." />
   <style>
-    :root { --b:#111; --m:#555; --g:#e9eef5; --card:#fff; --p:#1a73e8; }
+    :root { --b:#111; --m:#555; --g:#e9eef5; --card:#fff; --p:#1a73e8; --ok:#198754; --no:#c0392b; }
     * { box-sizing: border-box; }
     body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; background:#f6f7fb; margin:0; padding:24px; color:var(--b); }
     .wrap { max-width: 960px; margin: 0 auto; }
@@ -32,13 +32,25 @@
     .scroll-wrap {
       max-height: 300px;           /* ~6 rows visible */
       overflow-y: auto;
-      padding-right: 6px;          /* avoid scrollbar overlay */
+      padding-right: 6px;
       scroll-behavior: smooth;
       border: 1px solid #eef0f3;
       border-radius: 12px;
       padding: 6px 8px;
       background: #fff;
     }
+
+    /* Paintable cell */
+    .cell {
+      display:flex; align-items:center; justify-content:center;
+      border:1px solid #e5e7eb; border-radius:10px; min-height:36px;
+      background:#fff; cursor:pointer; user-select:none;
+      outline: none;
+    }
+    .cell:focus { box-shadow:0 0 0 2px #cde1ff; }
+    .cell.preferred { background:#e8f6ee; border-color:#cfe9da; color:#0f5132; }
+    .cell.unavailable { background:#fdecea; border-color:#f5c2c0; color:#842029; }
+    .cell.ghost { opacity:.6 }
 
     .actions { display:flex; gap:10px; margin-top:16px; }
     button { padding:10px 14px; border-radius:10px; border:1px solid var(--p); background:var(--p); color:#fff; font-weight:600; cursor:pointer; }
@@ -47,6 +59,12 @@
 
     .oneoff-card { border:1px dashed #d1d5db; border-radius:10px; padding:12px; margin:10px 0; background:#fafbff; }
     .oneoff-head { display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; }
+
+    /* Paint toolbar */
+    .toolbar { display:flex; gap:10px; align-items:center; margin:8px 0 4px; }
+    .tool { display:inline-flex; align-items:center; gap:8px; padding:8px 10px; border:1px solid #d0d7de; border-radius:10px; background:#fff; cursor:pointer; }
+    .tool input { accent-color:#1a73e8; }
+    .kbd { font-family: ui-monospace, Menlo, Consolas, monospace; background:#eef1f6; border:1px solid #d8dee9; padding:0 6px; border-radius:6px; font-size:.85rem; }
   </style>
 </head>
 <body>
@@ -54,9 +72,9 @@
     <div class="card">
 
       <h1>Temp Improv — Practice Availability</h1>
-      <p class="muted">Mark your recurring weekly times and any one-off exceptions. “Preferred” beats “Available”; “Unavailable” is a hard block.</p>
+      <p class="muted">Mark your recurring weekly times and any one-off exceptions. “Preferred” beats “Unavailable”. Leave blanks if you don’t care.</p>
 
-      <!-- Keep your existing Formspree action + thanks URL -->
+      <!-- Formspree -->
       <form id="availability-form" action="https://formspree.io/f/xwpwgbng" method="POST">
         <input type="text" name="_gotcha" style="display:none" tabindex="-1" autocomplete="off" />
         <input type="hidden" name="_redirect" value="https://sungodramen.github.io/improv-availability/thanks.html" />
@@ -75,7 +93,14 @@
 
         <fieldset aria-labelledby="weekly-legend">
           <legend id="weekly-legend">Recurring weekly rhythm</legend>
-          <p class="muted">Scroll the grid to see all hours (10am–10pm). Leave blank if a slot doesn’t apply.</p>
+          <p class="muted">Scroll the grid to see all hours (10am–10pm). Use the paint tools to drag across cells.</p>
+
+          <!-- Paint toolbar -->
+          <div class="toolbar" role="radiogroup" aria-label="Paint mode">
+            <label class="tool"><input type="radio" name="paint" value="preferred" checked /> Preferred <span class="kbd">P</span></label>
+            <label class="tool"><input type="radio" name="paint" value="unavailable" /> Unavailable <span class="kbd">U</span></label>
+            <label class="tool"><input type="radio" name="paint" value="erase" /> Erase <span class="kbd">Backspace</span></label>
+          </div>
 
           <!-- Weekday header -->
           <div class="row header" aria-hidden="true">
@@ -121,7 +146,6 @@
             <select name="oneoff[__i__][status]">
               <option value="">—</option>
               <option>Preferred</option>
-              <option>Available</option>
               <option>Unavailable</option>
             </select>
           </label>
@@ -135,13 +159,13 @@
   </div>
 
   <script>
-    // ----- Weekly grid (10:00–22:00, scrollable, starts centered on 12–6pm) -----
+    // ---------- Weekly grid (10:00–22:00, scrollable, paintable) ----------
     (function buildWeeklyGrid() {
       const grid = document.getElementById('weekly-grid');
+      const form = document.getElementById('availability-form');
       const days = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
-
-      // hours 10..21 (10–11, 11–12, ... 21–22) — 12 rows total
-      const startHours = Array.from({length: 12}, (_, i) => 10 + i); // 10..21
+      // hours 10..21 => 12 rows of 1-hour blocks
+      const startHours = Array.from({length: 12}, (_, i) => 10 + i);
 
       const fmt = (h) => {
         const start = new Date(2000,0,1,h,0);
@@ -150,43 +174,118 @@
         return `${toLabel(start)}–${toLabel(end)}`;
       };
 
-      const makeSelect = (day, h) => {
-        const sel = document.createElement('select');
-        sel.name = `week[${day}_${String(h).padStart(2,'0')}]`; // e.g., week[Mon_18]
-        sel.innerHTML = `<option value="">—</option>
-                         <option>Preferred</option>
-                         <option>Available</option>
-                         <option>Unavailable</option>`;
-        sel.setAttribute('aria-label', `${day} ${fmt(h)}`);
-        return sel;
-      };
+      // Hidden input factory (so Formspree gets clean names/values)
+      function ensureHidden(name) {
+        let input = form.querySelector(`input[type="hidden"][name="${name}"]`);
+        if (!input) {
+          input = document.createElement('input');
+          input.type = 'hidden';
+          input.name = name;
+          form.appendChild(input);
+        }
+        return input;
+      }
+
+      function setCellState(cell, state) {
+        cell.classList.remove('preferred','unavailable');
+        cell.textContent = '—';
+        const hidden = ensureHidden(cell.dataset.name);
+        if (state === 'preferred') {
+          cell.classList.add('preferred');
+          cell.textContent = 'Preferred';
+          hidden.value = 'Preferred';
+        } else if (state === 'unavailable') {
+          cell.classList.add('unavailable');
+          cell.textContent = 'Unavailable';
+          hidden.value = 'Unavailable';
+        } else {
+          hidden.value = ''; // erase
+        }
+      }
 
       // Build rows
       startHours.forEach((h) => {
         const row = document.createElement('div');
         row.className = 'row';
+
         const label = document.createElement('div');
         label.textContent = fmt(h);
         row.appendChild(label);
 
-        days.forEach((d) => row.appendChild(makeSelect(d, h)));
+        days.forEach((d) => {
+          const name = `week[${d}_${String(h).padStart(2,'0')}]`;
+          const cell = document.createElement('button');
+          cell.type = 'button';
+          cell.className = 'cell';
+          cell.dataset.name = name;
+          cell.setAttribute('aria-label', `${d} ${fmt(h)}`);
+          cell.textContent = '—';
+          cell.addEventListener('click', () => {
+            const mode = document.querySelector('input[name="paint"]:checked')?.value || 'preferred';
+            // toggle: if already that state, erase; else set to mode
+            const isPref = cell.classList.contains('preferred');
+            const isUnav = cell.classList.contains('unavailable');
+            if ((mode === 'preferred' && isPref) || (mode === 'unavailable' && isUnav)) {
+              setCellState(cell, 'erase');
+            } else {
+              setCellState(cell, mode);
+            }
+          });
+          // keyboard shortcuts
+          cell.addEventListener('keydown', (e) => {
+            if (e.key === 'p' || e.key === 'P') { setCellState(cell, 'preferred'); e.preventDefault(); }
+            if (e.key === 'u' || e.key === 'U') { setCellState(cell, 'unavailable'); e.preventDefault(); }
+            if (e.key === 'Backspace' || e.key === 'Delete') { setCellState(cell, 'erase'); e.preventDefault(); }
+          });
+          row.appendChild(cell);
+          // create hidden input upfront for deterministic payload
+          ensureHidden(name);
+        });
 
         grid.appendChild(row);
       });
 
-      // Scroll to put noon-ish rows in view (12–6pm)
-      // Find the row for 12:00
+      // Drag paint (mouse & touch)
+      let dragging = false;
+      let dragMode = 'preferred';
+
+      function getMode() {
+        return document.querySelector('input[name="paint"]:checked')?.value || 'preferred';
+      }
+
+      function paintCell(target) {
+        if (!target.classList.contains('cell')) return;
+        setCellState(target, dragMode);
+      }
+
+      grid.addEventListener('pointerdown', (e) => {
+        const t = e.target;
+        if (!t.classList.contains('cell')) return;
+        dragging = true;
+        dragMode = getMode();
+        // pointer capture for smooth dragging
+        grid.setPointerCapture(e.pointerId);
+        paintCell(t);
+      });
+      grid.addEventListener('pointermove', (e) => {
+        if (!dragging) return;
+        const el = document.elementFromPoint(e.clientX, e.clientY);
+        if (el && el.classList && el.classList.contains('cell')) paintCell(el);
+      });
+      grid.addEventListener('pointerup', () => { dragging = false; });
+      grid.addEventListener('pointercancel', () => { dragging = false; });
+
+      // Scroll to noon-ish initially
       const noonIndex = startHours.indexOf(12);
       const rowEls = grid.querySelectorAll('.row');
       if (noonIndex >= 0 && rowEls[noonIndex]) {
-        // Try centering noon row
         const target = rowEls[noonIndex];
         const offset = target.offsetTop - grid.clientHeight / 2 + target.clientHeight / 2;
         grid.scrollTop = Math.max(0, offset);
       }
     })();
 
-    // ----- Dynamic one-off rows -----
+    // ---------- Dynamic one-off rows ----------
     (function oneOffs() {
       const list = document.getElementById('oneoff-list');
       const tpl  = document.getElementById('oneoff-template').innerHTML;
@@ -199,7 +298,6 @@
         wrap.innerHTML = html;
         const card = wrap.firstElementChild;
 
-        // optional prefill
         if (prefill.date)   card.querySelector(`[name="oneoff[${idx}][date]"]`).value   = prefill.date;
         if (prefill.start)  card.querySelector(`[name="oneoff[${idx}][start]"]`).value  = prefill.start;
         if (prefill.end)    card.querySelector(`[name="oneoff[${idx}][end]"]`).value    = prefill.end;
@@ -211,7 +309,7 @@
         idx += 1;
       }
 
-      // Start with two blocks to match your previous layout
+      // start with two blocks
       addOneOff();
       addOneOff();
 
