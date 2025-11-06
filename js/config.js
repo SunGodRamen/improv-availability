@@ -1,9 +1,3 @@
-// js/config.js
-// Centralized config for the availability form. Change only this file when you roll months.
-//
-// Example month change:
-//   window.POLICY = makePolicy({ windowISO: '2025-12', startISO: '2025-12-01', endISO: '2025-12-31' });
-//
 (() => {
   function makePolicy(overrides = {}) {
     const base = {

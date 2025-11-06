@@ -161,7 +161,6 @@
   </div>
 
   <script>
-    // --- SR helper ---
     function srSay(msg){
       const n = document.getElementById('sr-status');
       if (!n) return;
@@ -169,7 +168,6 @@
       setTimeout(()=>{ n.textContent = msg; }, 10);
     }
 
-    // --- Metadata helpers ---
     function addHidden(form, name, value='') {
       let i = form.querySelector(`input[type="hidden"][name="${name}"]`);
       if (!i) {
@@ -181,7 +179,6 @@
       return i;
     }
 
-    // ---------- Weekly grid (10:00–22:00), desktop drag + mobile tap-range ----------
     (function buildWeeklyGrid() {
       const grid = document.getElementById('weekly-grid');
       const form = document.getElementById('availability-form');
@@ -190,14 +187,12 @@
       const startHours = Array.from({length: 12}, (_, i) => 10 + i); // 10..21
       const isTouch = matchMedia('(pointer: coarse)').matches;
 
-      // Telemetry counters
       const t0 = performance.now();
       let firstInteractionMs = null;
       let focusCount = 0, blurCount = 0, clickCount = 0;
       let cellPaints = 0, rangeSelections = 0;
       let pageMaxScroll = 0, gridMaxScroll = 0;
 
-      // Static metadata on load
       (function captureStatic(){
         const nav = navigator || {};
         const conn = nav.connection || nav.webkitConnection || nav.mozConnection || {};
@@ -233,7 +228,6 @@
         addHidden(form, '_meta[weekly_slots]', days.length * startHours.length);
       })();
 
-      // Dynamic metadata hooks
       window.addEventListener('resize', () => {
         addHidden(form, '_meta[viewport_w]', window.innerWidth);
         addHidden(form, '_meta[viewport_h]', window.innerHeight);
@@ -290,7 +284,6 @@
         return 'unset';
       }
 
-      // Build the grid
       startHours.forEach((h) => {
         const row = document.createElement('div');
         row.className = 'row';
@@ -315,9 +308,8 @@
         grid.appendChild(row);
       });
 
-      // Desktop drag mode
       let dragging = false;
-      let operation = 'set'; // 'set' or 'unset'
+      let operation = 'set';
       let opMode = 'preferred';
 
       function decideOperation(startCell) {
@@ -371,7 +363,6 @@
         grid.removeEventListener('click', onClick);
       }
 
-      // Mobile tap-range mode with yellow start cue
       let rangeStart = null;
 
       function sameColumn(a, b){ return a && b && a.dataset.day === b.dataset.day; }
@@ -453,7 +444,6 @@
         if (!grid.contains(e.target) && rangeStart) clearPending();
       }
 
-      // Keyboard shortcuts
       grid.addEventListener('keydown', (e) => {
         const t = e.target;
         if (!t.classList || !t.classList.contains('cell')) return;
@@ -472,14 +462,12 @@
         }
       });
 
-      // Init modes
       if (isTouch) { enableMobileTapRange(); } else { enableDesktopDrag(); }
       mobileDragToggle.addEventListener('change', () => {
         if (mobileDragToggle.checked) { disableMobileTapRange(); srSay('Drag mode enabled.'); }
         else { if (isTouch) { enableMobileTapRange(); srSay('Tap range mode enabled.'); } }
       });
 
-      // Scroll to noon initially
       const noonIndex = startHours.indexOf(12);
       const rowEls = grid.querySelectorAll('.row');
       if (noonIndex >= 0 && rowEls[noonIndex]) {
@@ -488,7 +476,6 @@
         grid.scrollTop = Math.max(0, offset);
       }
 
-      // On submit: finalize dynamic metadata
       form.addEventListener('submit', () => {
         addHidden(form, '_meta[submitted_at_iso]', new Date().toISOString());
         addHidden(form, '_meta[time_open_ms]', Math.round(performance.now() - t0));
@@ -504,7 +491,6 @@
       });
     })();
 
-    // ---------- Dynamic one-off rows ----------
     (function oneOffs() {
       const list = document.getElementById('oneoff-list');
       const tpl  = document.getElementById('oneoff-template').innerHTML;
@@ -528,7 +514,6 @@
         idx += 1;
       }
 
-      // start with two blocks
       addOneOff();
       addOneOff();
 
