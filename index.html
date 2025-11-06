@@ -23,11 +23,16 @@
     .grid3 { display:grid; grid-template-columns: 1fr 1fr 1fr; gap:12px; }
     .row { display:grid; grid-template-columns: 120px repeat(7, 1fr); gap:8px; align-items:center; margin:8px 0; }
     .row > div:first-child { font-weight:600; }
+    .row.header { font-weight:600; color:#223; }
+    .row.header > div:first-child { visibility:hidden; }
     .hint { color:var(--m); font-size:.9rem; }
     .actions { display:flex; gap:10px; margin-top:16px; }
     button { padding:10px 14px; border-radius:10px; border:1px solid var(--p); background:var(--p); color:#fff; font-weight:600; cursor:pointer; }
-    button.secondary { background:#fff; color:var(--p); }
+    button.secondary { background:#fff; color:#1a73e8; }
     .hr { height:1px; background:#e5e7eb; margin:16px 0; }
+    .oneoff-card { border:1px dashed #d1d5db; border-radius:10px; padding:12px; margin:10px 0; background:#fafbff; }
+    .oneoff-head { display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; }
+    .ghost { opacity:.6 }
   </style>
 </head>
 <body>
@@ -37,12 +42,9 @@
       <h1>Temp Improv — Practice Availability</h1>
       <p class="muted">Mark your recurring weekly times and any one-off exceptions. “Preferred” beats “Available”; “Unavailable” is a hard block.</p>
 
-      <!-- Replace the ACTION value with your Formspree endpoint in step 3 -->
+      <!-- Keep your existing Formspree action + thanks URL -->
       <form id="availability-form" action="https://formspree.io/f/xwpwgbng" method="POST">
-        <!-- Anti-spam honeypot (Formspree supports this pattern) -->
         <input type="text" name="_gotcha" style="display:none" tabindex="-1" autocomplete="off" />
-
-        <!-- Redirect to thanks page after submit -->
         <input type="hidden" name="_redirect" value="https://sungodramen.github.io/improv-availability/thanks.html" />
 
         <fieldset>
@@ -57,11 +59,17 @@
           </div>
         </fieldset>
 
-        <fieldset>
-          <legend>Recurring weekly rhythm</legend>
+        <fieldset aria-labelledby="weekly-legend">
+          <legend id="weekly-legend">Recurring weekly rhythm</legend>
           <p class="hint">Pick a status for any slots you’re commonly free. Leave blank if it doesn’t apply.</p>
 
-          <!-- You can add/remove rows (times). Current set: 6–9 PM -->
+          <!-- NEW: weekday header row -->
+          <div class="row header" aria-hidden="true">
+            <div>—</div>
+            <div>Mon</div><div>Tue</div><div>Wed</div><div>Thu</div><div>Fri</div><div>Sat</div><div>Sun</div>
+          </div>
+
+          <!-- Rows: add/remove as needed -->
           <div class="row">
             <div>6–7 PM</div>
             <select name="week[Mon_18]" aria-label="Mon 6–7 PM"><option value="">—</option><option>Preferred</option><option>Available</option><option>Unavailable</option></select>
@@ -95,44 +103,19 @@
             <select name="week[Sun_20]" aria-label="Sun 8–9 PM"><option value="">—</option><option>Preferred</option><option>Available</option><option>Unavailable</option></select>
           </div>
 
-          <p class="hint">If you want more rows (times), duplicate one of the “row” blocks above.</p>
+          <p class="hint">Need more rows? Duplicate one of the rows above in the HTML (or ping me and I’ll add a row adder).</p>
         </fieldset>
 
-        <fieldset>
-          <legend>Specific dates (one-offs)</legend>
-          <p class="hint">Add a couple if you know travel or special openings.</p>
+        <fieldset aria-labelledby="oneoff-legend">
+          <legend id="oneoff-legend">Specific dates (one-offs)</legend>
+          <p class="hint">Use this for travel or unique openings. Add as many as you like.</p>
 
-          <div class="grid3">
-            <label>Date <input type="date" name="oneoff[0][date]" /></label>
-            <label>Start <input type="time" name="oneoff[0][start]" /></label>
-            <label>End   <input type="time" name="oneoff[0][end]" /></label>
+          <!-- Dynamic list target -->
+          <div id="oneoff-list"></div>
+
+          <div class="actions">
+            <button type="button" id="add-oneoff" class="secondary">+ Add another date</button>
           </div>
-          <label>Status
-            <select name="oneoff[0][status]">
-              <option value="">—</option><option>Preferred</option><option>Available</option><option>Unavailable</option>
-            </select>
-          </label>
-          <label>Notes
-            <input type="text" name="oneoff[0][notes]" placeholder="Optional context" />
-          </label>
-
-          <div class="hr"></div>
-
-          <div class="grid3">
-            <label>Date <input type="date" name="oneoff[1][date]" /></label>
-            <label>Start <input type="time" name="oneoff[1][start]" /></label>
-            <label>End   <input type="time" name="oneoff[1][end]" /></label>
-          </div>
-          <label>Status
-            <select name="oneoff[1][status]">
-              <option value="">—</option><option>Preferred</option><option>Available</option><option>Unavailable</option>
-            </select>
-          </label>
-          <label>Notes
-            <input type="text" name="oneoff[1][notes]" placeholder="Optional context" />
-          </label>
-
-          <p class="hint">Need more one-offs? Copy/paste another block like the ones above.</p>
         </fieldset>
 
         <div class="actions">
@@ -141,7 +124,68 @@
         </div>
       </form>
 
+      <!-- Hidden template for one-off blocks -->
+      <template id="oneoff-template">
+        <div class="oneoff-card" data-oneoff>
+          <div class="oneoff-head">
+            <strong>One-off</strong>
+            <button type="button" class="secondary" data-remove>&times; Remove</button>
+          </div>
+          <div class="grid3">
+            <label>Date <input type="date" name="oneoff[__i__][date]" /></label>
+            <label>Start <input type="time" name="oneoff[__i__][start]" /></label>
+            <label>End   <input type="time" name="oneoff[__i__][end]" /></label>
+          </div>
+          <label>Status
+            <select name="oneoff[__i__][status]">
+              <option value="">—</option><option>Preferred</option><option>Available</option><option>Unavailable</option>
+            </select>
+          </label>
+          <label>Notes
+            <input type="text" name="oneoff[__i__][notes]" placeholder="Optional context" />
+          </label>
+        </div>
+      </template>
+
     </div>
   </div>
+
+  <script>
+    // Dynamic one-off rows for Formspree
+    (function () {
+      const list = document.getElementById('oneoff-list');
+      const tpl  = document.getElementById('oneoff-template').innerHTML;
+      const addBtn = document.getElementById('add-oneoff');
+
+      let idx = 0;
+
+      function addOneOff(prefill = {}) {
+        const html = tpl.replaceAll('__i__', String(idx));
+        const wrap = document.createElement('div');
+        wrap.innerHTML = html;
+        const card = wrap.firstElementChild;
+
+        // optional prefill support
+        if (prefill.date) card.querySelector(`[name="oneoff[${idx}][date]"]`).value = prefill.date;
+        if (prefill.start) card.querySelector(`[name="oneoff[${idx}][start]"]`).value = prefill.start;
+        if (prefill.end) card.querySelector(`[name="oneoff[${idx}][end]"]`).value = prefill.end;
+        if (prefill.status) card.querySelector(`[name="oneoff[${idx}][status]"]`).value = prefill.status;
+        if (prefill.notes) card.querySelector(`[name="oneoff[${idx}][notes]"]`).value = prefill.notes;
+
+        card.querySelector('[data-remove]').addEventListener('click', () => {
+          card.remove();
+        });
+
+        list.appendChild(card);
+        idx += 1;
+      }
+
+      // Start with two rows so it matches your previous version
+      addOneOff();
+      addOneOff();
+
+      addBtn.addEventListener('click', () => addOneOff());
+    })();
+  </script>
 </body>
 </html>
