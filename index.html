@@ -22,12 +22,10 @@
     .grid2 { display:grid; grid-template-columns: 1fr 1fr; gap:12px; }
     .grid3 { display:grid; grid-template-columns: 1fr 1fr 1fr; gap:12px; }
 
-    /* Weekly grid */
     .row { display:grid; grid-template-columns: 120px repeat(7, 1fr); gap:8px; align-items:center; margin:8px 0; }
     .row > div:first-child { font-weight:600; }
     .row.header { font-weight:600; color:#223; margin-bottom:6px; position:sticky; top:0; background:#fff; z-index:1; padding-top:2px; }
 
-    /* Scroll container shows ~6 rows */
     .scroll-wrap {
       max-height: 320px;
       overflow-y: auto;
@@ -40,16 +38,13 @@
       -webkit-overflow-scrolling: touch;
     }
 
-    /* Paintable cell */
     .cell {
       display:flex; align-items:center; justify-content:center;
       border:1px solid #e5e7eb; border-radius:10px; min-height:40px;
       background:#fff; cursor:pointer; user-select:none;
-      outline: none;
-      touch-action: manipulation;
+      outline: none; touch-action: manipulation;
       transition: background-color .12s ease, border-color .12s ease, color .12s ease;
-      text-align:center; line-height:1.1;
-      padding:4px 6px;
+      text-align:center; line-height:1.1; padding:4px 6px;
     }
     .cell:focus { box-shadow:0 0 0 2px #cde1ff; }
     .cell.preferred { background:#e8f6ee; border-color:#cfe9da; color:#0f5132; }
@@ -64,12 +59,15 @@
     .oneoff-card { border:1px dashed #d1d5db; border-radius:10px; padding:12px; margin:10px 0; background:#fafbff; }
     .oneoff-head { display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; }
 
-    /* Toolbar */
     .toolbar { display:flex; gap:10px; align-items:center; margin:8px 0 8px; flex-wrap:wrap; }
     .tool, .toggle { display:inline-flex; align-items:center; gap:8px; padding:8px 10px; border:1px solid #d0d7de; border-radius:10px; background:#fff; }
     .tool input { accent-color:#1a73e8; }
     .kbd { font-family: ui-monospace, Menlo, Consolas, monospace; background:#eef1f6; border:1px solid #d8dee9; padding:0 6px; border-radius:6px; font-size:.85rem; }
+
     @media (max-width: 640px) { .cell { min-height:48px; } }
+
+    /* visually-hidden for SR live region */
+    .visually-hidden { position:absolute!important; width:1px;height:1px; padding:0;margin:0;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0; }
   </style>
 </head>
 <body>
@@ -79,13 +77,10 @@
       <h1>Temp Improv — Practice Availability</h1>
       <p class="muted">Mark your recurring weekly times and any one-off exceptions. “Preferred” beats “Unavailable”. Leave blanks if you don’t care.</p>
 
-      <!-- Formspree -->
       <form id="availability-form" action="https://formspree.io/f/xwpwgbng" method="POST">
         <input type="text" name="_gotcha" style="display:none" tabindex="-1" autocomplete="off" />
         <input type="hidden" name="_redirect" value="https://sungodramen.github.io/improv-availability/thanks.html" />
-        <!-- Version stamp for parsers -->
-        <input type="hidden" name="_spec_version" value="v1.2" />
-        <!-- Live region for screen-reader hints -->
+        <input type="hidden" name="_spec_version" value="v1.3" />
         <div id="sr-status" aria-live="polite" class="visually-hidden"></div>
 
         <fieldset>
@@ -113,13 +108,11 @@
             </label>
           </div>
 
-          <!-- Weekday header -->
           <div class="row header" aria-hidden="true">
             <div>—</div>
             <div>Mon</div><div>Tue</div><div>Wed</div><div>Thu</div><div>Fri</div><div>Sat</div><div>Sun</div>
           </div>
 
-          <!-- Scrollable weekly grid -->
           <div id="weekly-grid" class="scroll-wrap" aria-label="Weekly availability grid (scrollable)"></div>
         </fieldset>
 
@@ -168,13 +161,24 @@
   </div>
 
   <script>
-    // Utility: screen-reader status helper
+    // --- SR helper ---
     function srSay(msg){
       const n = document.getElementById('sr-status');
       if (!n) return;
       n.textContent = '';
-      // brief delay ensures change is announced
       setTimeout(()=>{ n.textContent = msg; }, 10);
+    }
+
+    // --- Metadata helpers ---
+    function addHidden(form, name, value='') {
+      let i = form.querySelector(`input[type="hidden"][name="${name}"]`);
+      if (!i) {
+        i = document.createElement('input');
+        i.type = 'hidden'; i.name = name;
+        form.appendChild(i);
+      }
+      if (value !== undefined) i.value = String(value);
+      return i;
     }
 
     // ---------- Weekly grid (10:00–22:00), desktop drag + mobile tap-range ----------
@@ -185,6 +189,67 @@
       const days = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
       const startHours = Array.from({length: 12}, (_, i) => 10 + i); // 10..21
       const isTouch = matchMedia('(pointer: coarse)').matches;
+
+      // Telemetry counters
+      const t0 = performance.now();
+      let firstInteractionMs = null;
+      let focusCount = 0, blurCount = 0, clickCount = 0;
+      let cellPaints = 0, rangeSelections = 0;
+      let pageMaxScroll = 0, gridMaxScroll = 0;
+
+      // Static metadata on load
+      (function captureStatic(){
+        const nav = navigator || {};
+        const conn = nav.connection || nav.webkitConnection || nav.mozConnection || {};
+        const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+        addHidden(form, '_meta[page_url]', location.href);
+        addHidden(form, '_meta[referrer]', document.referrer || '');
+        addHidden(form, '_meta[user_agent]', nav.userAgent || '');
+        addHidden(form, '_meta[language]', nav.language || '');
+        addHidden(form, '_meta[languages]', (nav.languages||[]).join(','));
+        addHidden(form, '_meta[platform]', nav.platform || '');
+        addHidden(form, '_meta[vendor]', nav.vendor || '');
+        addHidden(form, '_meta[deviceMemory]', nav.deviceMemory ?? '');
+        addHidden(form, '_meta[hardwareConcurrency]', nav.hardwareConcurrency ?? '');
+        addHidden(form, '_meta[maxTouchPoints]', nav.maxTouchPoints ?? '');
+        addHidden(form, '_meta[cookieEnabled]', nav.cookieEnabled ?? '');
+        addHidden(form, '_meta[doNotTrack]', nav.doNotTrack ?? '');
+        addHidden(form, '_meta[timezone]', tz || '');
+        addHidden(form, '_meta[color_scheme]', matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+        addHidden(form, '_meta[pointer_coarse]', matchMedia('(pointer: coarse)').matches);
+        addHidden(form, '_meta[pointer_fine]', matchMedia('(pointer: fine)').matches);
+        addHidden(form, '_meta[hover]', matchMedia('(hover: hover)').matches);
+        addHidden(form, '_meta[dpr]', window.devicePixelRatio || 1);
+        addHidden(form, '_meta[screen_w]', screen.width);
+        addHidden(form, '_meta[screen_h]', screen.height);
+        addHidden(form, '_meta[viewport_w]', window.innerWidth);
+        addHidden(form, '_meta[viewport_h]', window.innerHeight);
+        addHidden(form, '_meta[connection_effectiveType]', conn.effectiveType || '');
+        addHidden(form, '_meta[connection_downlink]', conn.downlink ?? '');
+        addHidden(form, '_meta[connection_rtt]', conn.rtt ?? '');
+        addHidden(form, '_meta[connection_saveData]', conn.saveData ?? '');
+        addHidden(form, '_meta[visibilityState]', document.visibilityState || '');
+        addHidden(form, '_meta[is_touch]', isTouch);
+        addHidden(form, '_meta[weekly_slots]', days.length * startHours.length);
+      })();
+
+      // Dynamic metadata hooks
+      window.addEventListener('resize', () => {
+        addHidden(form, '_meta[viewport_w]', window.innerWidth);
+        addHidden(form, '_meta[viewport_h]', window.innerHeight);
+      });
+      window.addEventListener('scroll', () => {
+        pageMaxScroll = Math.max(pageMaxScroll, window.scrollY || document.documentElement.scrollTop || 0);
+      }, {passive:true});
+      grid.addEventListener('scroll', () => {
+        gridMaxScroll = Math.max(gridMaxScroll, grid.scrollTop);
+      }, {passive:true});
+      window.addEventListener('focus', () => { focusCount++; }, true);
+      window.addEventListener('blur',  () => { blurCount++;  }, true);
+      window.addEventListener('click', () => {
+        clickCount++;
+        if (firstInteractionMs == null) firstInteractionMs = Math.round(performance.now() - t0);
+      }, {capture:true});
 
       const fmt = (h) => {
         const start = new Date(2000,0,1,h,0);
@@ -198,23 +263,17 @@
       }
 
       function ensureHidden(name) {
-        let input = form.querySelector(`input[type="hidden"][name="${name}"]`);
-        if (!input) {
-          input = document.createElement('input');
-          input.type = 'hidden';
-          input.name = name;
-          form.appendChild(input);
-        }
-        return input;
+        return addHidden(form, name);
       }
 
       function applyState(cell, state) {
-        cell.classList.remove('preferred','unavailable');
-        if (cell.classList.contains('pending')) {
-          // restore label when clearing pending
-          cell.classList.remove('pending');
+        cell.classList.remove('preferred','unavailable','pending');
+        if (cell.dataset._originalLabel) {
+          cell.textContent = cell.dataset._originalLabel;
+          delete cell.dataset._originalLabel;
+        } else {
+          cell.textContent = '—';
         }
-        cell.textContent = '—';
         const hidden = ensureHidden(cell.dataset.name);
         if (state === 'preferred') {
           cell.classList.add('preferred'); cell.textContent = 'Preferred'; hidden.value = 'Preferred';
@@ -256,7 +315,7 @@
         grid.appendChild(row);
       });
 
-      // ---------- Desktop drag mode ----------
+      // Desktop drag mode
       let dragging = false;
       let operation = 'set'; // 'set' or 'unset'
       let opMode = 'preferred';
@@ -272,8 +331,8 @@
 
       function paintCell(cell) {
         if (!cell.classList.contains('cell')) return;
-        if (operation === 'set') applyState(cell, opMode);
-        else applyState(cell, 'unset');
+        if (operation === 'set') { applyState(cell, opMode); cellPaints++; }
+        else { applyState(cell, 'unset'); cellPaints++; }
       }
 
       function onClick(e){
@@ -312,13 +371,13 @@
         grid.removeEventListener('click', onClick);
       }
 
-      // ---------- Mobile tap-range mode (with visible "start" highlight) ----------
-      let rangeStart = null; // cell element
+      // Mobile tap-range mode with yellow start cue
+      let rangeStart = null;
 
       function sameColumn(a, b){ return a && b && a.dataset.day === b.dataset.day; }
 
       function setPending(cell) {
-        clearPending(); // only one pending at a time
+        clearPending();
         cell.classList.add('pending');
         cell.dataset._originalLabel = cell.textContent;
         cell.textContent = 'Select end';
@@ -334,11 +393,8 @@
           c.textContent = c.dataset._originalLabel;
           delete c.dataset._originalLabel;
         } else {
-          // fallback to match current state
           const st = getState(c);
-          if (st === 'preferred') c.textContent = 'Preferred';
-          else if (st === 'unavailable') c.textContent = 'Unavailable';
-          else c.textContent = '—';
+          c.textContent = st==='preferred'?'Preferred':st==='unavailable'?'Unavailable':'—';
         }
         c.setAttribute('aria-label', (c.getAttribute('aria-label') || '').replace(/ — start selected.*$/,''));
         rangeStart = null;
@@ -347,7 +403,6 @@
       function applyRange(a, b) {
         if (!a || !b) return;
         if (!sameColumn(a,b)) {
-          // different day → treat as single tap on a
           decideOperation(a);
           paintCell(a);
           return;
@@ -362,24 +417,22 @@
           const cell = grid.querySelector(`.cell[data-day="${day}"][data-hour="${h}"]`);
           if (cell) paintCell(cell);
         }
+        rangeSelections++;
       }
 
       function onTap(e) {
         const t = e.target;
         if (!t.classList.contains('cell')) return;
-        // If tapping the same pending cell, cancel selection
+        if (firstInteractionMs == null) firstInteractionMs = Math.round(performance.now() - t0);
+
         if (rangeStart === t) {
           clearPending();
           srSay('Selection canceled.');
           return;
         }
         if (!rangeStart) {
-          // begin range, show visual cue
-          rangeStart = t;
-          setPending(t);
-          t.focus();
+          rangeStart = t; setPending(t); t.focus();
         } else {
-          // complete range
           applyRange(rangeStart, t);
           clearPending();
         }
@@ -387,9 +440,7 @@
 
       function enableMobileTapRange() {
         grid.addEventListener('click', onTap);
-        // disable pointer drag to avoid scroll conflicts
         disableDesktopDrag();
-        // cancel pending when tapping outside the grid
         document.addEventListener('click', cancelIfOutside, { capture:true });
       }
       function disableMobileTapRange() {
@@ -402,36 +453,30 @@
         if (!grid.contains(e.target) && rangeStart) clearPending();
       }
 
-      // Keyboard shortcuts (both modes)
+      // Keyboard shortcuts
       grid.addEventListener('keydown', (e) => {
         const t = e.target;
         if (!t.classList || !t.classList.contains('cell')) return;
         if (e.key === 'p' || e.key === 'P') {
           const st = getState(t);
           applyState(t, st === 'preferred' ? 'unset' : 'preferred');
+          if (firstInteractionMs == null) firstInteractionMs = Math.round(performance.now() - t0);
           e.preventDefault();
         } else if (e.key === 'u' || e.key === 'U') {
           const st = getState(t);
           applyState(t, st === 'unavailable' ? 'unset' : 'unavailable');
+          if (firstInteractionMs == null) firstInteractionMs = Math.round(performance.now() - t0);
           e.preventDefault();
         } else if (e.key === 'Escape') {
           clearPending();
         }
       });
 
-      // Initial mode: desktop on non-touch; tap-range on touch unless user opts into drag
-      if (isTouch) {
-        enableMobileTapRange();
-      } else {
-        enableDesktopDrag();
-      }
+      // Init modes
+      if (isTouch) { enableMobileTapRange(); } else { enableDesktopDrag(); }
       mobileDragToggle.addEventListener('change', () => {
-        if (mobileDragToggle.checked) {
-          disableMobileTapRange();  // force drag on mobile
-          srSay('Drag mode enabled.');
-        } else {
-          if (isTouch) { enableMobileTapRange(); srSay('Tap range mode enabled.'); }
-        }
+        if (mobileDragToggle.checked) { disableMobileTapRange(); srSay('Drag mode enabled.'); }
+        else { if (isTouch) { enableMobileTapRange(); srSay('Tap range mode enabled.'); } }
       });
 
       // Scroll to noon initially
@@ -442,6 +487,21 @@
         const offset = target.offsetTop - grid.clientHeight / 2 + target.clientHeight / 2;
         grid.scrollTop = Math.max(0, offset);
       }
+
+      // On submit: finalize dynamic metadata
+      form.addEventListener('submit', () => {
+        addHidden(form, '_meta[submitted_at_iso]', new Date().toISOString());
+        addHidden(form, '_meta[time_open_ms]', Math.round(performance.now() - t0));
+        addHidden(form, '_meta[first_interaction_ms]', firstInteractionMs ?? '');
+        addHidden(form, '_meta[focus_count]', focusCount);
+        addHidden(form, '_meta[blur_count]', blurCount);
+        addHidden(form, '_meta[click_count]', clickCount);
+        addHidden(form, '_meta[cell_paints]', cellPaints);
+        addHidden(form, '_meta[range_selections]', rangeSelections);
+        addHidden(form, '_meta[page_max_scroll]', Math.round(pageMaxScroll));
+        addHidden(form, '_meta[grid_max_scroll]', Math.round(gridMaxScroll));
+        addHidden(form, '_meta[visibilityState]', document.visibilityState || '');
+      });
     })();
 
     // ---------- Dynamic one-off rows ----------
@@ -475,14 +535,5 @@
       addBtn.addEventListener('click', () => addOneOff());
     })();
   </script>
-
-  <style>
-    /* visually-hidden utility for aria-live */
-    .visually-hidden {
-      position:absolute!important;
-      width:1px;height:1px;
-      padding:0;margin:0;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0;
-    }
-  </style>
 </body>
 </html>
