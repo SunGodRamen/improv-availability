@@ -23,6 +23,8 @@
 
     const days = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
 
+    const startHours = window.startHours || Array.from({ length: 12 }, (_, i) => i + 10);
+
     startHours.forEach((h) => {
       const row = document.createElement('div');
       row.className = 'row';
