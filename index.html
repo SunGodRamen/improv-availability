@@ -50,7 +50,6 @@
     .cell:focus { box-shadow:0 0 0 2px #cde1ff; }
     .cell.preferred { background:#e8f6ee; border-color:#cfe9da; color:#0f5132; }
     .cell.unavailable { background:#fdecea; border-color:#f5c2c0; color:#842029; }
-    .cell.ghost { opacity:.6 }
 
     .actions { display:flex; gap:10px; margin-top:16px; }
     button { padding:10px 14px; border-radius:10px; border:1px solid var(--p); background:var(--p); color:#fff; font-weight:600; cursor:pointer; }
@@ -95,11 +94,10 @@
           <legend id="weekly-legend">Recurring weekly rhythm</legend>
           <p class="muted">Scroll the grid to see all hours (10am–10pm). Use the paint tools to drag across cells.</p>
 
-          <!-- Paint toolbar -->
+          <!-- Paint toolbar (only two modes now) -->
           <div class="toolbar" role="radiogroup" aria-label="Paint mode">
             <label class="tool"><input type="radio" name="paint" value="preferred" checked /> Preferred <span class="kbd">P</span></label>
             <label class="tool"><input type="radio" name="paint" value="unavailable" /> Unavailable <span class="kbd">U</span></label>
-            <label class="tool"><input type="radio" name="paint" value="erase" /> Erase <span class="kbd">Backspace</span></label>
           </div>
 
           <!-- Weekday header -->
@@ -159,13 +157,12 @@
   </div>
 
   <script>
-    // ---------- Weekly grid (10:00–22:00, scrollable, paintable) ----------
+    // ---------- Weekly grid (10:00–22:00, scrollable, two-mode toggle/drag) ----------
     (function buildWeeklyGrid() {
       const grid = document.getElementById('weekly-grid');
       const form = document.getElementById('availability-form');
       const days = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
-      // hours 10..21 => 12 rows of 1-hour blocks
-      const startHours = Array.from({length: 12}, (_, i) => 10 + i);
+      const startHours = Array.from({length: 12}, (_, i) => 10 + i); // 10..21
 
       const fmt = (h) => {
         const start = new Date(2000,0,1,h,0);
@@ -174,7 +171,11 @@
         return `${toLabel(start)}–${toLabel(end)}`;
       };
 
-      // Hidden input factory (so Formspree gets clean names/values)
+      function currentMode() {
+        return document.querySelector('input[name="paint"]:checked')?.value || 'preferred';
+      }
+
+      // Hidden input helper (ensures deterministic payload)
       function ensureHidden(name) {
         let input = form.querySelector(`input[type="hidden"][name="${name}"]`);
         if (!input) {
@@ -186,7 +187,7 @@
         return input;
       }
 
-      function setCellState(cell, state) {
+      function applyState(cell, state) {
         cell.classList.remove('preferred','unavailable');
         cell.textContent = '—';
         const hidden = ensureHidden(cell.dataset.name);
@@ -199,11 +200,17 @@
           cell.textContent = 'Unavailable';
           hidden.value = 'Unavailable';
         } else {
-          hidden.value = ''; // erase
+          hidden.value = ''; // unset
         }
       }
 
-      // Build rows
+      function getState(cell) {
+        if (cell.classList.contains('preferred')) return 'preferred';
+        if (cell.classList.contains('unavailable')) return 'unavailable';
+        return 'unset';
+      }
+
+      // Build grid
       startHours.forEach((h) => {
         const row = document.createElement('div');
         row.className = 'row';
@@ -220,50 +227,50 @@
           cell.dataset.name = name;
           cell.setAttribute('aria-label', `${d} ${fmt(h)}`);
           cell.textContent = '—';
-          cell.addEventListener('click', () => {
-            const mode = document.querySelector('input[name="paint"]:checked')?.value || 'preferred';
-            // toggle: if already that state, erase; else set to mode
-            const isPref = cell.classList.contains('preferred');
-            const isUnav = cell.classList.contains('unavailable');
-            if ((mode === 'preferred' && isPref) || (mode === 'unavailable' && isUnav)) {
-              setCellState(cell, 'erase');
-            } else {
-              setCellState(cell, mode);
-            }
-          });
-          // keyboard shortcuts
-          cell.addEventListener('keydown', (e) => {
-            if (e.key === 'p' || e.key === 'P') { setCellState(cell, 'preferred'); e.preventDefault(); }
-            if (e.key === 'u' || e.key === 'U') { setCellState(cell, 'unavailable'); e.preventDefault(); }
-            if (e.key === 'Backspace' || e.key === 'Delete') { setCellState(cell, 'erase'); e.preventDefault(); }
-          });
           row.appendChild(cell);
-          // create hidden input upfront for deterministic payload
           ensureHidden(name);
         });
 
         grid.appendChild(row);
       });
 
-      // Drag paint (mouse & touch)
+      // Determine drag operation per your rule:
+      // start on BLANK  -> op = setTo(currentMode)
+      // start on SAME   -> op = unset
+      // start on OPPOSITE -> op = setTo(currentMode)
       let dragging = false;
-      let dragMode = 'preferred';
+      let operation = 'set'; // 'set' or 'unset'
+      let opMode = 'preferred'; // which mode to set when operation==='set'
 
-      function getMode() {
-        return document.querySelector('input[name="paint"]:checked')?.value || 'preferred';
+      function decideOperation(startCell) {
+        const mode = currentMode();
+        const state = getState(startCell);
+        opMode = mode;
+        if (state === 'unset') operation = 'set';
+        else if (state === mode) operation = 'unset';
+        else operation = 'set'; // opposite -> set to current
       }
 
-      function paintCell(target) {
-        if (!target.classList.contains('cell')) return;
-        setCellState(target, dragMode);
+      function paintCell(cell) {
+        if (!cell.classList.contains('cell')) return;
+        if (operation === 'set') applyState(cell, opMode);
+        else applyState(cell, 'unset');
       }
 
+      // Click follows same rule as drag start on single cell
+      grid.addEventListener('click', (e) => {
+        const t = e.target;
+        if (!t.classList.contains('cell')) return;
+        decideOperation(t);
+        paintCell(t);
+      });
+
+      // Pointer drag (mouse/touch/pen)
       grid.addEventListener('pointerdown', (e) => {
         const t = e.target;
         if (!t.classList.contains('cell')) return;
+        decideOperation(t);
         dragging = true;
-        dragMode = getMode();
-        // pointer capture for smooth dragging
         grid.setPointerCapture(e.pointerId);
         paintCell(t);
       });
@@ -272,10 +279,29 @@
         const el = document.elementFromPoint(e.clientX, e.clientY);
         if (el && el.classList && el.classList.contains('cell')) paintCell(el);
       });
-      grid.addEventListener('pointerup', () => { dragging = false; });
-      grid.addEventListener('pointercancel', () => { dragging = false; });
+      function stopDrag(){ dragging = false; }
+      grid.addEventListener('pointerup', stopDrag);
+      grid.addEventListener('pointercancel', stopDrag);
+      grid.addEventListener('pointerleave', stopDrag);
 
-      // Scroll to noon-ish initially
+      // Keyboard shortcuts on focused cell:
+      // P: toggle Preferred (blank/opposite -> Preferred; Preferred -> unset)
+      // U: toggle Unavailable (blank/opposite -> Unavailable; Unavailable -> unset)
+      grid.addEventListener('keydown', (e) => {
+        const t = e.target;
+        if (!t.classList || !t.classList.contains('cell')) return;
+        if (e.key === 'p' || e.key === 'P') {
+          const state = getState(t);
+          applyState(t, state === 'preferred' ? 'unset' : 'preferred');
+          e.preventDefault();
+        } else if (e.key === 'u' || e.key === 'U') {
+          const state = getState(t);
+          applyState(t, state === 'unavailable' ? 'unset' : 'unavailable');
+          e.preventDefault();
+        }
+      });
+
+      // Scroll to noon initially
       const noonIndex = startHours.indexOf(12);
       const rowEls = grid.querySelectorAll('.row');
       if (noonIndex >= 0 && rowEls[noonIndex]) {
