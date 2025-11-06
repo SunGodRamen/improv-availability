@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Temp Improv — Practice Availability</title>
+  <meta name="description" content="Tell us the times you can practice this month." />
+  <style>
+    :root { --b:#111; --m:#555; --g:#e9eef5; --card:#fff; --p:#1a73e8; }
+    * { box-sizing: border-box; }
+    body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; background:#f6f7fb; margin:0; padding:24px; color:var(--b); }
+    .wrap { max-width: 960px; margin: 0 auto; }
+    .card { background:var(--card); border:1px solid #e5e7eb; border-radius:14px; padding:20px; box-shadow:0 1px 3px rgba(0,0,0,.04); }
+    h1 { margin:0 0 6px; font-size:1.5rem; }
+    p.muted { color:var(--m); margin:0 0 16px; }
+    fieldset { border:1px solid #eef0f3; border-radius:12px; padding:14px; margin:14px 0; }
+    legend { font-weight:600; padding:0 6px; }
+    label { display:block; font-size:.95rem; margin:6px 0; }
+    input[type="text"], input[type="email"], input[type="time"], input[type="date"], select, textarea {
+      width:100%; padding:9px 10px; border:1px solid #cbd5e1; border-radius:10px; background:#fff;
+    }
+    .grid2 { display:grid; grid-template-columns: 1fr 1fr; gap:12px; }
+    .grid3 { display:grid; grid-template-columns: 1fr 1fr 1fr; gap:12px; }
+    .row { display:grid; grid-template-columns: 120px repeat(7, 1fr); gap:8px; align-items:center; margin:8px 0; }
+    .row > div:first-child { font-weight:600; }
+    .hint { color:var(--m); font-size:.9rem; }
+    .actions { display:flex; gap:10px; margin-top:16px; }
+    button { padding:10px 14px; border-radius:10px; border:1px solid var(--p); background:var(--p); color:#fff; font-weight:600; cursor:pointer; }
+    button.secondary { background:#fff; color:var(--p); }
+    .hr { height:1px; background:#e5e7eb; margin:16px 0; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="card">
+
+      <h1>Temp Improv — Practice Availability</h1>
+      <p class="muted">Mark your recurring weekly times and any one-off exceptions. “Preferred” beats “Available”; “Unavailable” is a hard block.</p>
+
+      <!-- Replace the ACTION value with your Formspree endpoint in step 3 -->
+      <form id="availability-form" action="__PASTE_FORMSPREE_ENDPOINT_HERE__" method="POST">
+        <!-- Anti-spam honeypot (Formspree supports this pattern) -->
+        <input type="text" name="_gotcha" style="display:none" tabindex="-1" autocomplete="off" />
+
+        <!-- Redirect to thanks page after submit -->
+        <input type="hidden" name="_redirect" value="https://YOUR_USER.github.io/improv-availability/thanks.html" />
+
+        <fieldset>
+          <legend>Your info</legend>
+          <div class="grid2">
+            <label>Full name
+              <input required type="text" name="name" placeholder="e.g., Joe Shmoe" />
+            </label>
+            <label>Contact (optional)
+              <input type="email" name="email" placeholder="you@example.com" />
+            </label>
+          </div>
+        </fieldset>
+
+        <fieldset>
+          <legend>Recurring weekly rhythm</legend>
+          <p class="hint">Pick a status for any slots you’re commonly free. Leave blank if it doesn’t apply.</p>
+
+          <!-- You can add/remove rows (times). Current set: 6–9 PM -->
+          <div class="row">
+            <div>6–7 PM</div>
+            <select name="week[Mon_18]" aria-label="Mon 6–7 PM"><option value="">—</option><option>Preferred</option><option>Available</option><option>Unavailable</option></select>
+            <select name="week[Tue_18]" aria-label="Tue 6–7 PM"><option value="">—</option><option>Preferred</option><option>Available</option><option>Unavailable</option></select>
+            <select name="week[Wed_18]" aria-label="Wed 6–7 PM"><option value="">—</option><option>Preferred</option><option>Available</option><option>Unavailable</option></select>
+            <select name="week[Thu_18]" aria-label="Thu 6–7 PM"><option value="">—</option><option>Preferred</option><option>Available</option><option>Unavailable</option></select>
+            <select name="week[Fri_18]" aria-label="Fri 6–7 PM"><option value="">—</option><option>Preferred</option><option>Available</option><option>Unavailable</option></select>
+            <select name="week[Sat_18]" aria-label="Sat 6–7 PM"><option value="">—</option><option>Preferred</option><option>Available</option><option>Unavailable</option></select>
+            <select name="week[Sun_18]" aria-label="Sun 6–7 PM"><option value="">—</option><option>Preferred</option><option>Available</option><option>Unavailable</option></select>
+          </div>
+
+          <div class="row">
+            <div>7–8 PM</div>
+            <select name="week[Mon_19]" aria-label="Mon 7–8 PM"><option value="">—</option><option>Preferred</option><option>Available</option><option>Unavailable</option></select>
+            <select name="week[Tue_19]" aria-label="Tue 7–8 PM"><option value="">—</option><option>Preferred</option><option>Available</option><option>Unavailable</option></select>
+            <select name="week[Wed_19]" aria-label="Wed 7–8 PM"><option value="">—</option><option>Preferred</option><option>Available</option><option>Unavailable</option></select>
+            <select name="week[Thu_19]" aria-label="Thu 7–8 PM"><option value="">—</option><option>Preferred</option><option>Available</option><option>Unavailable</option></select>
+            <select name="week[Fri_19]" aria-label="Fri 7–8 PM"><option value="">—</option><option>Preferred</option><option>Available</option><option>Unavailable</option></select>
+            <select name="week[Sat_19]" aria-label="Sat 7–8 PM"><option value="">—</option><option>Preferred</option><option>Available</option><option>Unavailable</option></select>
+            <select name="week[Sun_19]" aria-label="Sun 7–8 PM"><option value="">—</option><option>Preferred</option><option>Available</option><option>Unavailable</option></select>
+          </div>
+
+          <div class="row">
+            <div>8–9 PM</div>
+            <select name="week[Mon_20]" aria-label="Mon 8–9 PM"><option value="">—</option><option>Preferred</option><option>Available</option><option>Unavailable</option></select>
+            <select name="week[Tue_20]" aria-label="Tue 8–9 PM"><option value="">—</option><option>Preferred</option><option>Available</option><option>Unavailable</option></select>
+            <select name="week[Wed_20]" aria-label="Wed 8–9 PM"><option value="">—</option><option>Preferred</option><option>Available</option><option>Unavailable</option></select>
+            <select name="week[Thu_20]" aria-label="Thu 8–9 PM"><option value="">—</option><option>Preferred</option><option>Available</option><option>Unavailable</option></select>
+            <select name="week[Fri_20]" aria-label="Fri 8–9 PM"><option value="">—</option><option>Preferred</option><option>Available</option><option>Unavailable</option></select>
+            <select name="week[Sat_20]" aria-label="Sat 8–9 PM"><option value="">—</option><option>Preferred</option><option>Available</option><option>Unavailable</option></select>
+            <select name="week[Sun_20]" aria-label="Sun 8–9 PM"><option value="">—</option><option>Preferred</option><option>Available</option><option>Unavailable</option></select>
+          </div>
+
+          <p class="hint">If you want more rows (times), duplicate one of the “row” blocks above.</p>
+        </fieldset>
+
+        <fieldset>
+          <legend>Specific dates (one-offs)</legend>
+          <p class="hint">Add a couple if you know travel or special openings.</p>
+
+          <div class="grid3">
+            <label>Date <input type="date" name="oneoff[0][date]" /></label>
+            <label>Start <input type="time" name="oneoff[0][start]" /></label>
+            <label>End   <input type="time" name="oneoff[0][end]" /></label>
+          </div>
+          <label>Status
+            <select name="oneoff[0][status]">
+              <option value="">—</option><option>Preferred</option><option>Available</option><option>Unavailable</option>
+            </select>
+          </label>
+          <label>Notes
+            <input type="text" name="oneoff[0][notes]" placeholder="Optional context" />
+          </label>
+
+          <div class="hr"></div>
+
+          <div class="grid3">
+            <label>Date <input type="date" name="oneoff[1][date]" /></label>
+            <label>Start <input type="time" name="oneoff[1][start]" /></label>
+            <label>End   <input type="time" name="oneoff[1][end]" /></label>
+          </div>
+          <label>Status
+            <select name="oneoff[1][status]">
+              <option value="">—</option><option>Preferred</option><option>Available</option><option>Unavailable</option>
+            </select>
+          </label>
+          <label>Notes
+            <input type="text" name="oneoff[1][notes]" placeholder="Optional context" />
+          </label>
+
+          <p class="hint">Need more one-offs? Copy/paste another block like the ones above.</p>
+        </fieldset>
+
+        <div class="actions">
+          <button type="submit">Submit</button>
+          <button class="secondary" type="reset">Clear</button>
+        </div>
+      </form>
+
+    </div>
+  </div>
+</body>
+</html>
