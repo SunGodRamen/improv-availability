@@ -1,6 +1,5 @@
 (() => {
   const qs  = (sel, el = document) => el.querySelector(sel);
-  const qsa = (sel, el = document) => Array.from(el.querySelectorAll(sel));
 
   function addHidden(form, name, value='') {
     let i = form.querySelector(`input[type="hidden"][name="${name}"]`);
@@ -18,7 +17,6 @@
   document.addEventListener('DOMContentLoaded', () => {
     const form = qs('#availability-form');
     const grid = qs('#weekly-grid');
-    const mobileDragToggle = qs('#mobile-drag-toggle');
     if (!form || !grid) return;
 
     addHidden(form, '_spec_version', 'v1.4');
@@ -42,7 +40,6 @@
         cell.dataset.hour = String(h);
         cell.textContent = '—';
         row.appendChild(cell);
-
         addHidden(form, name, '');
       });
 
@@ -61,9 +58,7 @@
       else if (state === 'unavailable') { cell.classList.add('unavailable'); cell.textContent='Unavailable'; hidden.value='Unavailable'; }
       else { cell.textContent='—'; hidden.value=''; }
     }
-    function currentMode(){
-      return qs('input[name="paint"]:checked')?.value || 'preferred';
-    }
+    function currentMode(){ return qs('input[name="paint"]:checked')?.value || 'preferred'; }
 
     let dragging = false;
     let operation = 'set';
@@ -91,7 +86,7 @@
       if (!t.classList.contains('cell')) return;
       decideOperation(t);
       dragging = true;
-      grid.setPointerCapture(e.pointerId);
+      grid.setPointerCapture?.(e.pointerId);
       paintCell(t);
     }
     function onMove(e){
@@ -107,5 +102,8 @@
     grid.addEventListener('pointercancel', onUp);
     grid.addEventListener('click', onClick);
 
+    form.addEventListener('submit', () => {
+      metas.forEach(n => n.remove());
+    });
   });
 })();
